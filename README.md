@@ -6,6 +6,8 @@ macOS menu bar widget that shows your Claude usage in real time, mirrored from `
 
 ## Install
 
+**Before you start:** make sure you're logged into [claude.ai](https://claude.ai) in Chrome — the app reads your Chrome cookies to authenticate.
+
 1. Download **[ClaudeUsageTracker.zip](https://github.com/eriklissinger/claude-usage-tracker/releases/latest)** from the latest release
 2. Unzip and drag `ClaudeUsageTracker.app` to your `/Applications` folder
 3. Right-click the app → **Open** (required once — macOS warns on first launch because the app isn't notarized)
