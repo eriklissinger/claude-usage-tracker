@@ -97,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func makePopoverView() -> PopoverView {
         PopoverView(
             snapshot: snapshot,
+            syncError: snapshot.synced == nil ? lastSyncError : nil,
             onRefresh: { [weak self] in self?.monitor.refreshNow() },
             onQuit: { NSApp.terminate(nil) }
         )

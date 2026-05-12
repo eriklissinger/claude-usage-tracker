@@ -10,6 +10,7 @@ public final class ClaudeUsageSync {
     public enum SyncError: Error, CustomStringConvertible {
         case missingSessionKey
         case missingOrgID
+        case sessionExpired
         case httpStatus(Int, String?)
         case malformedResponse(String)
 
@@ -17,6 +18,7 @@ public final class ClaudeUsageSync {
             switch self {
             case .missingSessionKey:    return "Chrome has no claude.ai sessionKey (logged out?)"
             case .missingOrgID:         return "Chrome has no lastActiveOrg cookie"
+            case .sessionExpired:       return "Visit claude.ai in Chrome to refresh your session"
             case .httpStatus(let c, let body):
                 return "claude.ai returned \(c)\(body.map { ": \($0)" } ?? "")"
             case .malformedResponse(let r): return "Bad JSON: \(r)"
@@ -106,6 +108,7 @@ public final class ClaudeUsageSync {
 
         if let err = responseError { throw err }
         guard (200..<300).contains(statusCode) else {
+            if statusCode == 403 { throw SyncError.sessionExpired }
             // Don't include the response body — it can echo session cookies / org IDs
             // from Cloudflare or Anthropic error pages, and errors get NSLogged.
             throw SyncError.httpStatus(statusCode, nil)

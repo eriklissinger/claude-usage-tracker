@@ -3,6 +3,7 @@ import ClaudeUsageTrackerCore
 
 struct PopoverView: View {
     let snapshot: UsageSnapshot
+    let syncError: String?
     let onRefresh: () -> Void
     let onQuit: () -> Void
 
@@ -16,6 +17,11 @@ struct PopoverView: View {
             Divider()
             blockSection
             weeklySection
+            if let err = syncError, snapshot.synced == nil {
+                Text(err)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.orange)
+            }
             if !modelBreakdown.isEmpty {
                 Divider()
                 modelSection
