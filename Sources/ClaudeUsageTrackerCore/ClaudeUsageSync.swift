@@ -24,6 +24,17 @@ public final class ClaudeUsageSync {
             case .malformedResponse(let r): return "Bad JSON: \(r)"
             }
         }
+
+        /// True when the fix is the user re-authenticating at claude.ai in
+        /// Chrome — the sessionKey cookie expired and was purged (it lives
+        /// ~28 days), or the server rejected it. Drives the "log in" call to
+        /// action in the UI.
+        public var needsLogin: Bool {
+            switch self {
+            case .missingSessionKey, .sessionExpired: return true
+            default: return false
+            }
+        }
     }
 
     private let pollInterval: TimeInterval

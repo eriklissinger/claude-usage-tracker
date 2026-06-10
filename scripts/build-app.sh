@@ -29,6 +29,11 @@ rm -rf "${APP_DIR}"
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 cp "${BIN_PATH}" "${MACOS_DIR}/${APP_NAME}"
 
+# App icon is generated from MascotRenderer so it always matches the menu bar
+# mascot (healthy / 0% used).
+echo "==> generating AppIcon.icns from mascot"
+".build/${CONFIG}/cct-icon-gen" "${RESOURCES_DIR}/AppIcon.icns"
+
 cat > "${CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -50,6 +55,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <string>APPL</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>

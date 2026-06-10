@@ -4,6 +4,8 @@ import ClaudeUsageTrackerCore
 struct PopoverView: View {
     let snapshot: UsageSnapshot
     let syncError: String?
+    let needsLogin: Bool
+    let onLogin: () -> Void
     let onRefresh: () -> Void
     let onQuit: () -> Void
 
@@ -14,10 +16,13 @@ struct PopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
+            if needsLogin {
+                loginBanner
+            }
             Divider()
             blockSection
             weeklySection
-            if let err = syncError, snapshot.synced == nil {
+            if let err = syncError, snapshot.synced == nil, !needsLogin {
                 Text(err)
                     .font(.system(size: 10))
                     .foregroundStyle(.orange)
@@ -39,6 +44,36 @@ struct PopoverView: View {
     }
 
     // MARK: - Sections
+
+    /// Shown when sync fails because the claude.ai session expired (the
+    /// sessionKey cookie lives ~28 days). Usage data is unavailable until the
+    /// user logs back in via Chrome — no fallback is displayed by design.
+    private var loginBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text("claude.ai session expired")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            Text("Usage data is paused until you log in again. Sync resumes automatically within a minute of logging in.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open claude.ai in Chrome") { onLogin() }
+                .controlSize(.small)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.orange.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.orange.opacity(0.4), lineWidth: 1)
+        )
+    }
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -144,7 +179,7 @@ struct PopoverView: View {
         }
         let total = byFamily.values.reduce(0, +)
         guard total > 0 else { return [] }
-        let order: [ModelFamily] = [.opus, .sonnet, .haiku, .unknown]
+        let order: [ModelFamily] = [.fable, .opus, .sonnet, .haiku, .unknown]
         return order.compactMap { family in
             guard let ncu = byFamily[family], ncu > 0 else { return nil }
             return (family.rawValue.capitalized, ncu, ncu / total)

@@ -1,6 +1,7 @@
 import Foundation
 
 public enum ModelFamily: String, Sendable {
+    case fable
     case opus
     case sonnet
     case haiku
@@ -8,6 +9,10 @@ public enum ModelFamily: String, Sendable {
 
     public var weight: Double {
         switch self {
+        // Fable 5 ($10/$50 per MTok) is priced at exactly 2× Opus 4.8
+        // ($5/$25), so anchor it at 2× the opus weight until a calibration
+        // pass against claude.ai's reported % says otherwise.
+        case .fable:   return 10.0
         case .opus:    return 5.0
         case .sonnet:  return 1.0
         case .haiku:   return 0.25
@@ -17,6 +22,7 @@ public enum ModelFamily: String, Sendable {
 
     public static func from(model: String) -> ModelFamily {
         let lower = model.lowercased()
+        if lower.contains("fable")  { return .fable }
         if lower.contains("opus")   { return .opus }
         if lower.contains("sonnet") { return .sonnet }
         if lower.contains("haiku")  { return .haiku }

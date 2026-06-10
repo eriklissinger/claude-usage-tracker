@@ -69,7 +69,7 @@ public enum UsageAggregator {
         return totals(for: filtered)
     }
 
-    /// Group entries by model family (opus / sonnet / haiku / unknown).
+    /// Group entries by model family (fable / opus / sonnet / haiku / unknown).
     public static func totalsByFamily(
         for entries: [UsageEntry],
         in window: TimeInterval,
@@ -81,7 +81,7 @@ public enum UsageAggregator {
         for e in filtered {
             buckets[ModelFamily.from(model: e.model), default: []].append(e)
         }
-        let order: [ModelFamily] = [.opus, .sonnet, .haiku, .unknown]
+        let order: [ModelFamily] = [.fable, .opus, .sonnet, .haiku, .unknown]
         return order.compactMap { family in
             guard let bucket = buckets[family], !bucket.isEmpty else { return nil }
             return (family, totals(for: bucket))

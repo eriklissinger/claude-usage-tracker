@@ -8,6 +8,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var sync: ClaudeUsageSync!
     private var snapshot: UsageSnapshot = .empty
     private var lastSyncError: String?
+    /// Set when the sync failure is an auth problem (expired/purged
+    /// sessionKey) — the fix is logging into claude.ai in Chrome, so the UI
+    /// switches to a "log in" call to action instead of a silent "‒".
+    private var needsLogin = false
 
     private var popover: NSPopover!
     private var hostingController: NSHostingController<PopoverView>!
@@ -40,15 +44,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // isn't installed, the user is logged out, or the cookie is expired —
         // we keep showing our calculated approximation in that case.
         sync = ClaudeUsageSync(pollInterval: 60) { [weak self] result in
+            guard let self else { return }
             switch result {
             case .success(let s):
-                self?.lastSyncError = nil
-                self?.monitor.updateSynced(s)
+                self.lastSyncError = nil
+                self.needsLogin = false
+                self.monitor.updateSynced(s)
                 // Quiet on success — at 60s polls this would be 1,440 log lines/day.
                 // The popover shows "live (Ns ago)" for visual confirmation.
             case .failure(let e):
-                self?.lastSyncError = "\(e)"
+                self.lastSyncError = "\(e)"
+                self.needsLogin = (e as? ClaudeUsageSync.SyncError)?.needsLogin ?? false
                 NSLog("[CCT] sync failed: %@", "\(e)")
+                // Failures don't flow through the monitor, so re-render here —
+                // otherwise the "log in" cue waits for the next snapshot tick.
+                self.render(snapshot: self.snapshot)
+                self.refreshPopoverContentIfNeeded()
             }
         }
         sync.start()
@@ -86,9 +97,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         button.imagePosition = .imageLeft
         button.imageHugsTitle = true
         if snap.displayBucket == .noData {
-            button.title = " ‒"
+            // Auth failure outranks the generic dash — the user can act on it.
+            button.title = needsLogin ? " ⚠︎ log in" : " ‒"
         } else {
             button.title = " \(pct)%"
+        }
+    }
+
+    /// Open claude.ai in Chrome specifically — the sync reads Chrome's cookie
+    /// jar, so logging in via the default browser wouldn't fix anything.
+    @objc private func openClaudeLogin() {
+        guard let url = URL(string: "https://claude.ai") else { return }
+        if let chrome = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {
+            NSWorkspace.shared.open(
+                [url],
+                withApplicationAt: chrome,
+                configuration: NSWorkspace.OpenConfiguration()
+            )
+        } else {
+            NSWorkspace.shared.open(url)
         }
     }
 
@@ -98,6 +125,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         PopoverView(
             snapshot: snapshot,
             syncError: snapshot.synced == nil ? lastSyncError : nil,
+            needsLogin: needsLogin,
+            onLogin: { [weak self] in self?.openClaudeLogin() },
             onRefresh: { [weak self] in self?.monitor.refreshNow() },
             onQuit: { NSApp.terminate(nil) }
         )
@@ -144,6 +173,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             menu.addItem(disabledItem("claude.ai sync: \(err)"))
         } else {
             menu.addItem(disabledItem("claude.ai sync: pending…"))
+        }
+        if needsLogin {
+            let login = NSMenuItem(
+                title: "⚠︎ Session expired — open claude.ai to log in",
+                action: #selector(openClaudeLogin),
+                keyEquivalent: "l"
+            )
+            login.target = self
+            menu.addItem(login)
         }
         let syncNow = NSMenuItem(title: "Sync now", action: #selector(syncNow), keyEquivalent: "s")
         syncNow.target = self

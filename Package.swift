@@ -21,5 +21,10 @@ let package = Package(
             dependencies: ["ClaudeUsageTrackerCore"],
             path: "Sources/cct-parse"
         ),
+        .executableTarget(
+            name: "cct-icon-gen",
+            dependencies: ["ClaudeUsageTrackerCore"],
+            path: "Sources/cct-icon-gen"
+        ),
     ]
 )
