@@ -1,0 +1,8 @@
+[
+  {
+    "window": "block",
+    "threshold": 50,
+    "title": "Claude usage 5h threshold reached",
+    "body": "5h usage is at 52%."
+  }
+]

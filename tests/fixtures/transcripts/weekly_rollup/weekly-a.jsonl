@@ -1,0 +1,2 @@
+{"timestamp":"2026-04-28T09:00:00Z","role":"assistant","model":"claude-3-7-sonnet","project":"weekly-rollup","tokens":1800,"requestId":"wreq-1","messageId":"wmsg-1"}
+{"timestamp":"2026-04-30T11:30:00Z","role":"assistant","model":"claude-3-5-haiku","project":"ops","tokens":600,"requestId":"wreq-2","messageId":"wmsg-2"}

@@ -1,0 +1,8 @@
+[
+  {
+    "window": "week",
+    "threshold": 80,
+    "title": "Claude usage weekly threshold reached",
+    "body": "Weekly usage is at 82%."
+  }
+]

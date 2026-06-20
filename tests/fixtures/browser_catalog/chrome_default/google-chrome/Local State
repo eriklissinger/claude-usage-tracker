@@ -1,0 +1,5 @@
+{
+  "os_crypt": {
+    "encrypted_key": "mock-linux-key"
+  }
+}

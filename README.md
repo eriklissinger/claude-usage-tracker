@@ -18,8 +18,10 @@ macOS menu bar widget that shows your Claude usage in real time, mirrored from `
 ## Requirements
 
 - macOS 13+
-- Google Chrome (or Brave / Edge — same cookie scheme; Safari and Firefox don't work)
-- Logged in to `claude.ai` in Chrome
+- Google Chrome
+- Logged in to `claude.ai` in Chrome's `Default` profile
+
+> **Current limitation:** while Brave / Edge use a similar cookie scheme, this repo currently reads only Google Chrome's `Default` profile path and `Chrome Safe Storage` keychain item.
 
 ## First-launch Keychain prompt
 
@@ -43,9 +45,9 @@ Click **Always Allow** to silence it permanently. This is how the app reads your
 
 ## How it works
 
-On launch and every 60s the app reads cookies from your local Chrome profile, decrypts them via the macOS Keychain, and calls the same endpoint `claude.ai/settings/usage` uses. Local Claude Code transcripts (`~/.claude/projects/**/*.jsonl`) are watched with FSEvents for the model/project breakdown rows.
+On launch and every 60s the app reads cookies from Chrome's local `Default` profile, decrypts them via the macOS Keychain, and calls the same endpoint `claude.ai/settings/usage` uses. Local Claude Code transcripts (`~/.claude/projects/**/*.jsonl`) are watched with FSEvents for per-model / top-project breakdowns and as a fallback source for reset countdown timing.
 
-If sync fails (logged out, Chrome not installed, endpoint changes), the widget shows `—` until it can connect again.
+If live sync fails (logged out, Chrome not installed, endpoint changes), the menu bar can keep showing the last fresh live value briefly. Once sync is stale, the menu bar falls back to `—`, while transcript-derived reset countdowns and breakdown rows can still appear in the popover.
 
 ## Build from source
 
@@ -57,6 +59,11 @@ cd claude-usage-tracker
 ./scripts/build-app.sh release
 open ./build/ClaudeUsageTracker.app
 ```
+
+### Dev notes
+
+- `./scripts/build-app.sh` is the intended local run path: it builds the binary, assembles the `LSUIElement` app bundle, and ad-hoc signs it. A plain `swift build` binary is not equivalent for menu bar app behavior.
+- `swift run cct-parse` prints transcript-derived totals plus active 5-hour / 7-day windows. It's useful for parser and window-logic debugging.
 
 ## License
 

@@ -1,0 +1,9 @@
+{
+  "sync": {
+    "session": "missing",
+    "isFresh": false
+  },
+  "transcripts": {
+    "fallback": true
+  }
+}

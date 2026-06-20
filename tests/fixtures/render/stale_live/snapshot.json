@@ -1,0 +1,11 @@
+{
+  "sync": {
+    "percent5h": 42,
+    "percent7d": 61,
+    "isFresh": false
+  },
+  "transcripts": {
+    "topModel": "Sonnet 58%",
+    "topProject": "cli-redesign 31%"
+  }
+}

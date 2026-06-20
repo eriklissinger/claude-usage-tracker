@@ -1,0 +1,20 @@
+browser_mode = "auto"
+refresh_interval_seconds = 60
+
+[tooltip]
+show_block = true
+show_week = true
+show_model_breakdown = true
+show_project_breakdown = true
+show_reset_times = true
+
+[notifications]
+enabled = true
+block_thresholds = [50, 75, 90]
+week_thresholds = [50, 75, 90]
+
+[settings_window]
+open_on_click = true
+remember_position = true
+remember_size = true
+stay_on_top = false

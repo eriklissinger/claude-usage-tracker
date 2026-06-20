@@ -1,0 +1,4 @@
+{
+  "fixture": "stale_live",
+  "description": "Stale sync should suppress primary live percent and notifications"
+}

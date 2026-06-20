@@ -1,0 +1,6 @@
+{
+  "text": "—",
+  "tooltip": "5h usage: stale live sync\nWeekly usage: stale live sync\nTop model: Sonnet 58%\nTop project: cli-redesign 31%",
+  "class": ["stale", "usage-none", "no-sync", "has-transcripts"],
+  "percentage": 0
+}

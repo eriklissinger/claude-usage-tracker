@@ -1,0 +1,19 @@
+{
+  "cookies": [
+    {
+      "host_key": ".claude.ai",
+      "name": "sessionKey",
+      "encrypted_value": "djEwJsdJ0EbbSsDY+W+I7gSaitLx8VZ6ucpv6SMdYcWJarg="
+    },
+    {
+      "host_key": "claude.ai",
+      "name": "cf_clearance",
+      "encrypted_value": "djEwrWnPe39uDKbsvl8LBwea7lprF9OsHmRsPMHizLFwqAw="
+    },
+    {
+      "host_key": ".example.com",
+      "name": "ignored",
+      "encrypted_value": "djEwJsdJ0EbbSsDY+W+I7gSaitLx8VZ6ucpv6SMdYcWJarg="
+    }
+  ]
+}
