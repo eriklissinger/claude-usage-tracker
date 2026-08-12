@@ -218,7 +218,6 @@ public final class ClaudeUsageSync {
         struct Envelope: Decodable {
             let five_hour: Window?
             let seven_day: Window?
-            let seven_day_sonnet: Window?
         }
         let env: Envelope
         do {
@@ -243,7 +242,6 @@ public final class ClaudeUsageSync {
             percent7d: Int((env.seven_day?.utilization ?? 0).rounded()),
             reset5hAt: parseDate(env.five_hour?.resets_at),
             reset7dAt: parseDate(env.seven_day?.resets_at),
-            percent7dSonnet: env.seven_day_sonnet?.utilization.map { Int($0.rounded()) },
             syncedAt: Date()
         )
     }

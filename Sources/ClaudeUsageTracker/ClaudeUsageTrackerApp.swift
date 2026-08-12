@@ -241,7 +241,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 percent7d: bucket.demoPercent,
                 reset5hAt: nil,
                 reset7dAt: nil,
-                percent7dSonnet: nil,
                 syncedAt: Date()
             )
         )
