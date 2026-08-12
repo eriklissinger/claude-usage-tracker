@@ -33,7 +33,7 @@ Click **Always Allow** to silence it permanently. This is how the app reads your
 
 - **5-hour block** — same percentage as `claude.ai/settings/usage`, updated every 60s
 - **Weekly window** — same, account-wide (claude.ai, Claude Code, MCP, etc.)
-- **Per-model and top-project breakdown** for the current block (Claude Code only — from local transcripts)
+- **Per-model and top-project breakdown** for the current block (Claude Code only — from local transcripts, shown as a share of that activity rather than of your limit)
 - **Reset countdowns** with absolute reset time
 
 ## Right-click menu
@@ -44,6 +44,8 @@ Click **Always Allow** to silence it permanently. This is how the app reads your
 ## How it works
 
 On launch and every 60s the app reads cookies from your local Chrome profile, decrypts them via the macOS Keychain, and calls the same endpoint `claude.ai/settings/usage` uses. Local Claude Code transcripts (`~/.claude/projects/**/*.jsonl`) are watched with FSEvents for the model/project breakdown rows.
+
+Usage is per-organization. If your account belongs to more than one org (say a personal one plus a team), the app probes each and reports whichever has usage on it, re-checking every 10 minutes. It deliberately doesn't just follow the `lastActiveOrg` cookie: that tracks the org switcher on claude.ai, so switching orgs in the browser would otherwise make the app report 0% while your real seat is burning down.
 
 If sync fails (logged out, Chrome not installed, endpoint changes), the widget shows `—` until it can connect again.
 

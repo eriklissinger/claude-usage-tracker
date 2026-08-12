@@ -42,6 +42,16 @@ public final class ClaudeUsageSync {
     private var timer: DispatchSourceTimer?
     private let onSync: Callback
 
+    /// How long a resolved org is trusted before we re-probe. Keeps the normal
+    /// poll to a single request while still noticing an org switch.
+    private let orgResolveInterval: TimeInterval = 600
+
+    /// The org we report usage for, plus when we picked it. Accessed only from
+    /// `queue`, which is serial.
+    private var resolvedOrgID: String?
+    private var orgResolvedAt: Date?
+    private var knownOrgCount = 0
+
     /// Latest successful sync. Nil until the first one lands.
     public private(set) var latest: SyncedUsage?
 
@@ -83,12 +93,82 @@ public final class ClaudeUsageSync {
         guard let sessionKey = cookies["sessionKey"], !sessionKey.isEmpty else {
             throw SyncError.missingSessionKey
         }
-        guard let orgID = cookies["lastActiveOrg"], !orgID.isEmpty else {
-            throw SyncError.missingOrgID
+
+        let orgID = try resolveOrgID(cookies: cookies)
+        let usage = try parse(get("organizations/\(orgID)/usage", cookies: cookies))
+
+        // An org reading all-zero is the symptom of tracking the wrong one, so
+        // drop the cache and re-probe next poll. Single-org accounts can't be
+        // wrong, and re-probing an idle account every minute is just noise.
+        if knownOrgCount > 1, usage.percent5h == 0, usage.percent7d == 0 {
+            resolvedOrgID = nil
+        }
+        return usage
+    }
+
+    /// Which org's usage to report.
+    ///
+    /// `lastActiveOrg` alone is wrong on multi-org accounts: it tracks the org
+    /// switcher in claude.ai's web UI, so switching to a personal org makes the
+    /// app silently report 0% while a team seat is actually burning down. Probe
+    /// every org the account belongs to and keep whichever one has usage on it.
+    private func resolveOrgID(cookies: [String: String]) throws -> String {
+        if let cached = resolvedOrgID, let at = orgResolvedAt,
+           Date().timeIntervalSince(at) < orgResolveInterval {
+            return cached
         }
 
-        guard let url = URL(string: "https://claude.ai/api/organizations/\(orgID)/usage") else {
-            throw SyncError.malformedResponse("could not construct URL for org \(orgID.prefix(8))…")
+        let lastActive = cookies["lastActiveOrg"].flatMap { $0.isEmpty ? nil : $0 }
+        let candidates = (try? orgUUIDs(cookies: cookies)) ?? []
+        knownOrgCount = candidates.count
+
+        let chosen: String
+        if candidates.count <= 1 {
+            // Nothing to disambiguate — trust the list, else the cookie.
+            guard let only = candidates.first ?? lastActive else {
+                throw SyncError.missingOrgID
+            }
+            chosen = only
+        } else {
+            // The org you actually work in is the one with a window burning
+            // down. A tie (genuinely idle account) falls back to the cookie.
+            var best: (uuid: String, score: Int)?
+            for uuid in candidates {
+                guard let u = try? parse(get("organizations/\(uuid)/usage", cookies: cookies)) else { continue }
+                let score = max(u.percent5h, u.percent7d)
+                if score > (best?.score ?? -1) { best = (uuid, score) }
+            }
+            if let best, best.score > 0 {
+                chosen = best.uuid
+            } else if let lastActive, candidates.contains(lastActive) {
+                chosen = lastActive
+            } else if let best {
+                chosen = best.uuid
+            } else {
+                throw SyncError.missingOrgID
+            }
+        }
+
+        resolvedOrgID = chosen
+        orgResolvedAt = Date()
+        return chosen
+    }
+
+    private func orgUUIDs(cookies: [String: String]) throws -> [String] {
+        struct Org: Decodable { let uuid: String }
+        let data = try get("organizations", cookies: cookies)
+        do {
+            return try JSONDecoder().decode([Org].self, from: data).filter { !$0.uuid.isEmpty }.map(\.uuid)
+        } catch {
+            // Body intentionally omitted — see note in get() below.
+            throw SyncError.malformedResponse("decode org list: \(error)")
+        }
+    }
+
+    /// GET `https://claude.ai/api/<path>`, replaying Chrome's cookie jar.
+    private func get(_ path: String, cookies: [String: String]) throws -> Data {
+        guard let url = URL(string: "https://claude.ai/api/\(path)") else {
+            throw SyncError.malformedResponse("could not construct URL for \(path.prefix(16))…")
         }
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
@@ -127,7 +207,7 @@ public final class ClaudeUsageSync {
         guard let data = responseData else {
             throw SyncError.malformedResponse("empty body")
         }
-        return try parse(data)
+        return data
     }
 
     private func parse(_ data: Data) throws -> SyncedUsage {

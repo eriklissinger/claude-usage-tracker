@@ -20,20 +20,15 @@ struct PopoverView: View {
                 loginBanner
             }
             Divider()
-            blockSection
-            weeklySection
+            accountSection
             if let err = syncError, snapshot.synced == nil, !needsLogin {
                 Text(err)
                     .font(.system(size: 10))
                     .foregroundStyle(.orange)
             }
-            if !modelBreakdown.isEmpty {
+            if !modelBreakdown.isEmpty || !projectBreakdown.isEmpty {
                 Divider()
-                modelSection
-            }
-            if !projectBreakdown.isEmpty {
-                Divider()
-                projectsSection
+                claudeCodeSection
             }
             Divider()
             footer
@@ -96,46 +91,52 @@ struct PopoverView: View {
         }
     }
 
-    private var blockSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("5-HOUR BLOCK")
-            ProgressBar(percent: snapshot.displayPercent5h)
+    /// The limit meters. These come from claude.ai's own usage endpoint, which
+    /// is account-wide — the caption says so, because the only labelled
+    /// sections used to say "Claude Code" and made the whole popover read as
+    /// Claude Code usage.
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel("ALL CLAUDE USAGE")
+            caption("Desktop, web, mobile and Claude Code · share of your limit")
+            meter(title: "5-hour block", percent: snapshot.displayPercent5h, reset: blockResetText)
+            meter(title: "Weekly window", percent: snapshot.displayPercent7d, reset: weeklyResetText)
+        }
+    }
+
+    /// Breakdowns parsed from local `~/.claude/projects` transcripts, so they
+    /// see Claude Code only. Their percentages are shares of that activity, not
+    /// shares of the limit — sitting under the meters above, they'd otherwise
+    /// read as the same unit.
+    private var claudeCodeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel("CLAUDE CODE ONLY")
+            caption("Share of this block's Claude Code activity, not of your limit")
+            if !modelBreakdown.isEmpty {
+                subsectionLabel("By model")
+                ForEach(modelBreakdown, id: \.0) { (label, _, share) in
+                    BreakdownRow(label: label, value: formatShare(share), share: share)
+                }
+            }
+            if !projectBreakdown.isEmpty {
+                subsectionLabel("Top projects")
+                ForEach(projectBreakdown, id: \.0) { (label, _, share) in
+                    BreakdownRow(label: label, value: formatShare(share), share: share)
+                }
+            }
+        }
+    }
+
+    private func meter(title: String, percent: Int, reset: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+            ProgressBar(percent: percent)
             HStack(spacing: 8) {
                 Spacer()
-                Text(blockResetText)
+                Text(reset)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var weeklySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("WEEKLY WINDOW")
-            ProgressBar(percent: snapshot.displayPercent7d)
-            HStack(spacing: 8) {
-                Spacer()
-                Text(weeklyResetText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var modelSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("CLAUDE CODE — BY MODEL")
-            ForEach(modelBreakdown, id: \.0) { (label, _, share) in
-                BreakdownRow(label: label, value: formatShare(share), share: share)
-            }
-        }
-    }
-
-    private var projectsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("CLAUDE CODE — TOP PROJECTS")
-            ForEach(projectBreakdown, id: \.0) { (label, _, share) in
-                BreakdownRow(label: label, value: formatShare(share), share: share)
             }
         }
     }
@@ -208,6 +209,20 @@ struct PopoverView: View {
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
             .tracking(0.6)
+    }
+
+    private func subsectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(.secondary)
+    }
+
+    /// Scope note under a section label: what the numbers below actually cover.
+    private func caption(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10))
+            .foregroundStyle(.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
