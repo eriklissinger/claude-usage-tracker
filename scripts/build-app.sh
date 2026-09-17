@@ -15,8 +15,22 @@ RESOURCES_DIR="${CONTENTS}/Resources"
 
 cd "${ROOT_DIR}"
 
-echo "==> swift build (${CONFIG})"
-swift build -c "${CONFIG}"
+# Two pins, both needed on a Command Line Tools install without Xcode:
+#
+#  * --build-system native. SwiftPM 6.4 defaults to the "swiftbuild" (XCBuild)
+#    engine, which fails to start under CLT-only with "Could not initialize
+#    build system: Unknown error parsing property list" — on any package, not
+#    just this one. The native engine is deprecated but works.
+#  * SDKROOT pinned to the macOS 26 SDK. In the macOS 27 SDK, SwiftUI's @State
+#    became a macro whose SwiftUIMacros plugin ships only with Xcode, so
+#    PopoverView fails to compile against it. We deploy to macOS 13 anyway.
+#
+# Drop both if Xcode gets installed.
+SDKROOT="${SDKROOT:-$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26*.sdk 2>/dev/null | sort -V | tail -1)}"
+export SDKROOT
+
+echo "==> swift build (${CONFIG}) — SDK ${SDKROOT:-default}"
+swift build -c "${CONFIG}" --build-system native
 
 BIN_PATH=".build/${CONFIG}/${APP_NAME}"
 if [[ ! -f "${BIN_PATH}" ]]; then
@@ -69,8 +83,11 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Ad-hoc codesign so Gatekeeper / TCC treat it as a stable identity.
+# Ad-hoc codesign so Gatekeeper / TCC treat it as a stable identity. Strip
+# extended attributes first — copying from an iCloud-backed checkout leaves
+# Finder metadata behind, which codesign rejects as "detritus".
 echo "==> ad-hoc codesigning"
+xattr -cr "${APP_DIR}"
 codesign --force --sign - --timestamp=none "${APP_DIR}" >/dev/null
 
 echo "==> done: ${APP_DIR}"

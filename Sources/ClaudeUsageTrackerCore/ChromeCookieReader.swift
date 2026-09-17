@@ -35,20 +35,64 @@ public enum ChromeCookieReader {
         }
     }
 
-    private static var cookiesPath: String {
-        NSString(string: "~/Library/Application Support/Google/Chrome/Default/Cookies")
-            .expandingTildeInPath
+    private static var chromeDir: String {
+        NSString(string: "~/Library/Application Support/Google/Chrome").expandingTildeInPath
     }
 
-    /// Read every cookie for the given host (and its `.host` parent), decrypt,
-    /// return as `name -> value`. Pulls all cookies so we can replay full
-    /// browser auth state (sessionKey, cf_clearance, lastActiveOrg, etc.).
+    /// Chrome profile directories holding a cookie DB, most-recently-used
+    /// first. Reading only "Default" misses the session whenever the signed-in
+    /// claude.ai profile is a secondary one ("Profile 1", "Profile 2", …).
+    private static var profileDirs: [String] {
+        let fm = FileManager.default
+        let all = ((try? fm.contentsOfDirectory(atPath: chromeDir)) ?? [])
+            .filter { $0 == "Default" || $0.hasPrefix("Profile ") }
+            .filter { fm.fileExists(atPath: "\(chromeDir)/\($0)/Cookies") }
+            .sorted()
+        guard let lastUsed = lastUsedProfile, all.contains(lastUsed) else { return all }
+        return [lastUsed] + all.filter { $0 != lastUsed }
+    }
+
+    /// `profile.last_used` from Chrome's Local State — the profile whose window
+    /// was frontmost last, and so the one the user thinks of as "logged in".
+    private static var lastUsedProfile: String? {
+        guard let data = FileManager.default.contents(atPath: "\(chromeDir)/Local State"),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let profile = json["profile"] as? [String: Any],
+              let lastUsed = profile["last_used"] as? String
+        else { return nil }
+        return lastUsed
+    }
+
+    /// Searches every Chrome profile and returns the first whose cookies carry
+    /// a `sessionKey` — the profile the user is actually signed in to. Falls
+    /// back to the richest result so the "logged out" error still surfaces.
     static func readAllCookies(forDomain domain: String) throws -> [String: String] {
-        guard FileManager.default.fileExists(atPath: cookiesPath) else {
-            throw CookieError.chromeNotInstalled
-        }
+        let profiles = profileDirs
+        guard !profiles.isEmpty else { throw CookieError.chromeNotInstalled }
 
         let key = try keychainDerivedKey()
+        var best: [String: String] = [:]
+        for profile in profiles {
+            let cookies = try readAllCookies(
+                forDomain: domain,
+                cookiesPath: "\(chromeDir)/\(profile)/Cookies",
+                key: key
+            )
+            if cookies["sessionKey"]?.isEmpty == false { return cookies }
+            if cookies.count > best.count { best = cookies }
+        }
+        return best
+    }
+
+    /// Read every cookie for the given host (and its `.host` parent) out of one
+    /// profile's DB, decrypt, return as `name -> value`. Pulls all cookies so we
+    /// can replay full browser auth state (sessionKey, cf_clearance,
+    /// lastActiveOrg, etc.).
+    private static func readAllCookies(
+        forDomain domain: String,
+        cookiesPath: String,
+        key: Data
+    ) throws -> [String: String] {
 
         // Copy DB to temp so we don't fight Chrome's lock.
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("cct_cookies_\(UUID().uuidString).sqlite").path

@@ -30,6 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover.animates = true
         popover.delegate = self
         hostingController = NSHostingController(rootView: makePopoverView())
+        // NSPopover sizes itself from the content view controller's
+        // preferredContentSize. NSHostingController does not maintain that by
+        // default (its default sizingOptions cover min/intrinsic/max only), so
+        // the popover was left at a stale size and clipped the top of the
+        // content once macOS stopped falling back to the view's fitting size.
+        hostingController.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hostingController
 
         monitor = UsageMonitor(tickInterval: 30) { [weak self] snap in
